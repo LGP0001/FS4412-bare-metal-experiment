@@ -72,3 +72,41 @@ WDT 通过 CPU 核心信号（DBGACK 信号）确定 CPU 核心是否当前处�
 
 ## 实验要求
 编程实现将WDT的递减频率设置为10000HZ，程序运行5s后开发板复位
+
+### 程序流程
+1. 设置一级分频（WTCON[15:8]）
+2. 设置二级分频（WTCON[4:3]）
+3. 设置是否产生中断信号（WTCON[2]）
+4. 设置是狗产生复位信号（WTCON[0]）
+5. 设置计时器初始值 （WTCNT）
+6. 开始工作 （WTCON[5]）
+7. 根据要求来决定是否喂狗（WTCNT）
+
+### 程序
+[点击这里查看完整的代码](./interface.c) 
+```C
+int main()
+{
+	WDT.WTCON = WDT.WTCON | (0x4D << 8); 	// 设置一级分频WTCON[15:8]
+	WDT.WTCON = WDT.WTCON | (0X3 << 3); 	// 设置二级分频WTCON[4:3]
+	/*WTCNT递减频率 = PLCK(100000000)/(0x4D + 1)/128 = 10016*/
+	WDT.WTCON = WDT.WTCON & (~(1 << 2)); 	// 禁止WDT产生中断信号WTCON[2]
+	/*实验要求减到零进行复位*/
+	WDT.WTCON = WDT.WTCON | 1;				// 使能WDT产生复位信号WTCON[0]
+	WDT.WTCNT = (10000 * 10);				// 设置计数器的初始值
+	WDT.WTCON = WDT.WTCON | (1 << 5);		// 使能WDT,计数器开始递减
+	
+	while (1)
+	{
+		printf("WDT.WTCNT = %d\n", WDT.WTCNT);
+		WDT.WTCNT = 10000; // 喂狗
+		Delay(100000);
+	}
+	return 0;
+}
+
+void Delay(unsigned int Time)
+{
+	while(Time--);
+}
+```
